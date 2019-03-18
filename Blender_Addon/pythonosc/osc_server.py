@@ -134,15 +134,6 @@ class ThreadingOSCUDPServer(socketserver.ThreadingMixIn, OSCUDPServer):
   """
 
 
-class ForkingOSCUDPServer(socketserver.ForkingMixIn, OSCUDPServer):
-  """Forking version of the OSC UDP server.
-
-  Each message will be handled in its own new process.
-  Use this when heavyweight operations are done by each message handlers
-  and forking a whole new process for each of them is worth it.
-  """
-
-
 class AsyncIOOSCUDPServer():
   """Asyncio version of the OSC UDP Server.
   Each UDP message is handled by _call_handlers_for_packet, the same method as in the

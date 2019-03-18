@@ -41,9 +41,9 @@ bl_info = {
     "category": "System"}
 
 import bpy
+
 import sys
 from select import select
-from bpy.utils import register_module, unregister_module
 import socket
 import errno
 from math import radians
@@ -65,10 +65,11 @@ from pythonosc import osc_server
 import threading
 import socketserver
 from bpy.app.handlers import persistent
+from bpy.utils import register_class
+from bpy.utils import unregister_class
 
 
 _report= ["",""] #This for reporting OS network errors 
-
 
 def OSC_callback(*args):
     fail = True   
@@ -276,7 +277,7 @@ class OSC_Reading_Sending(bpy.types.Operator):
           
         #inititate the modal timer thread
         context.window_manager.modal_handler_add(self)
-        self._timer = context.window_manager.event_timer_add(bcw.addosc_rate/1000, context.window)
+        self._timer = context.window_manager.event_timer_add(bcw.addosc_rate/1000,window=context.window)
         context.window_manager.status = "Running"
         
         return {'RUNNING_MODAL'}
@@ -291,7 +292,7 @@ class OSC_Reading_Sending(bpy.types.Operator):
 class OSC_UI_Panel(bpy.types.Panel):
     bl_label = "AddOSC Settings"
     bl_space_type = "VIEW_3D"
-    bl_region_type = "TOOLS"
+    bl_region_type = "UI"
     bl_category = "AddOSC"
  
     def draw(self, context):
@@ -314,7 +315,7 @@ class OSC_UI_Panel(bpy.types.Panel):
 class OSC_UI_Panel2(bpy.types.Panel):
     bl_label = "AddOSC Operations"
     bl_space_type = "VIEW_3D"
-    bl_region_type = "TOOLS"
+    bl_region_type = "UI"
     bl_category = "AddOSC"
         
     def draw(self, context):
@@ -599,11 +600,25 @@ def addosc_handler(scene):
             if bpy.context.window_manager.addosc_autorun == True:
                 bpy.ops.addosc.startudp()  
 
+classes = (
+         OSC_Reading_Sending,
+         OSC_UI_Panel,
+         OSC_UI_Panel2,
+         StartUDP,
+         StopUDP,
+         PickOSCaddress,
+         AddOSC_ImportKS
+         )
+
+
 def register():
-    bpy.utils.register_module(__name__)
+    for cls in classes:
+        register_class(cls)
     bpy.app.handlers.load_post.append(addosc_handler)
         
 def unregister():
+    for cls in classes:
+        unregister_class(cls)
     bpy.utils.unregister_module(__name__)
  
 if __name__ == "__main__": 
