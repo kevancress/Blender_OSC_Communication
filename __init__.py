@@ -330,11 +330,11 @@ class OSC_UI_Panel2(bpy.types.Panel):
             row5.prop(bpy.context.window_manager, 'addosc_lastaddr', text="Last OSC address")
             row5.prop(bpy.context.window_manager, 'addosc_lastpayload', text="Last OSC message")   
                 
-        layout.separator()
-        layout.operator("addosc.importks", text='Import Keying Set')
+        col = layout.column()
+        col.operator("addosc.importks", text='Import Keying Set')
+        col.operator("addosc.blankprop", text='Import Blank Prop')
         
-        layout.separator()
-        layout.label(text="Imported Keys:")
+        col.label(text="Driven Properties")
         for item in bpy.context.scene.OSC_keys:
             box3 = layout.box()
             split = box3.split()
@@ -344,7 +344,7 @@ class OSC_UI_Panel2(bpy.types.Panel):
             col2 = split.column()
             row4 = col2.row(align=True)
             row4.prop(item,'id',text='')
-            row4.label(text="("+item.osc_type+")")            
+            row4.prop(item, 'osc_type', text='Type')            
 
             row5 = col2.row(align=True)
             row5.operator("addosc.pick", text='Pick').i_addr = item.address
@@ -564,6 +564,43 @@ class AddOSC_ImportKS(bpy.types.Operator):
         
         return{'FINISHED'}        
 
+class AddOSC_ImportBlank(bpy.types.Operator):
+    bl_idname = "addosc.blankprop"  
+    bl_label = "Import a blank prop"
+    bl_options = {'UNDO'}
+    bl_description ="Import the keys of the active Keying Set"
+    
+    def verifdefaddr(self,context):
+        if context.scene.addosc_defaultaddr[0] != "/":
+            context.scene.addosc_defaultaddr = "/"+context.scene.addosc_defaultaddr
+        
+    class SceneSettingItem(bpy.types.PropertyGroup):
+        #key_path = bpy.props.StringProperty(name="Key", default="Unknown")
+        address = bpy.props.StringProperty(name="Address", default="")
+        data_path = bpy.props.StringProperty(name="Data path", default="")
+        id = bpy.props.StringProperty(name="ID", default="")
+        osc_type = bpy.props.StringProperty(name="Type", default="Unknown")
+        value = bpy.props.StringProperty(name="Value", default="Unknown")
+        idx = bpy.props.IntProperty(name="Index", min=0, default=0)
+    bpy.utils.register_class(SceneSettingItem)    
+                        
+    bpy.types.Scene.OSC_keys = bpy.props.CollectionProperty(type=SceneSettingItem)
+    bpy.types.Scene.OSC_keys_tmp = bpy.props.CollectionProperty(type=SceneSettingItem)
+    
+    bpy.types.Scene.addosc_defaultaddr = bpy.props.StringProperty(default="/blender", description='Form new addresses based on this keyword',update=verifdefaddr)
+
+    def execute(self, context):
+        ks = bpy.context.scene.keying_sets.active
+        
+        item = bpy.context.scene.OSC_keys.add()
+        item.id = ""
+        item.data_path = ""
+        item.address = ""
+        item.osc_type = ""
+        item.idx = 0
+                                                     
+        return{'FINISHED'}        
+
 #Restore saved settings
 @persistent
 def addosc_handler(scene):
@@ -607,7 +644,8 @@ classes = (
          StartUDP,
          StopUDP,
          PickOSCaddress,
-         AddOSC_ImportKS
+         AddOSC_ImportKS,
+         AddOSC_ImportBlank
          )
 
 
@@ -619,7 +657,6 @@ def register():
 def unregister():
     for cls in classes:
         unregister_class(cls)
-    bpy.utils.unregister_module(__name__)
  
 if __name__ == "__main__": 
     register()
