@@ -1,6 +1,6 @@
 import bpy
-from bpy.props import IntProperty, EnumProperty, StringProperty, CollectionProperty
-from bpy.types import PropertyGroup
+from bpy.props import IntProperty, EnumProperty, StringProperty, CollectionProperty, PointerProperty
+from bpy.types import PropertyGroup, Object, Scene
 
 def update_num_props(self,context):
     prefix = self
@@ -18,17 +18,23 @@ def update_num_props(self,context):
 
 
 class BaseProp:
-    data_path: StringProperty(name="Data path", default="")
-    id: StringProperty(name="ID", default="")
-    osc_type: StringProperty(name="Type", default="Unknown")
-    value: StringProperty(name="Value", default="Unknown")
+    data_path: PointerProperty(type=Object)
+    id: StringProperty(name="Data Path", default="",description="RNA path (from ID Block) to property being driven")
+    osc_type: EnumProperty(
+                items=(("string", "String", "String Property"),
+                        ("float", "Float", "Float Property"),
+                        ("int", "Integer", "Integer Property")),
+                name="Message Type",
+                description="Message Type")  
     idx: IntProperty(name="Index", min=0, default=0)
 
 # For Simple Adress -> Prop Mappings
 class SceneSettingItem(PropertyGroup,BaseProp):
     address: StringProperty(name="Address", default="")
 
-bpy.utils.register_class(SceneSettingItem) 
+bpy.utils.register_class(SceneSettingItem)
+Scene.OSC_keys = bpy.props.CollectionProperty(type=SceneSettingItem)
+Scene.OSC_keys_tmp = bpy.props.CollectionProperty(type=SceneSettingItem)
 
 class PropItem(PropertyGroup,BaseProp):
     dummy_prop: StringProperty(name="I Just need somthing here, I'll do somthing neat with it later", default="")
@@ -47,8 +53,8 @@ bpy.utils.register_class(PrefixItem)
 # Defines the Message Format and Address
 class MessageParser (PropertyGroup):
     messageType: EnumProperty(
-                items=(('01', "Space Seperated String", "Space Seperated String"),
-                        ('02', "NOT IMPLIMENTED", "Reserved for implimentation of other Message Formats")),
+                items=((' ', "Space Seperated String", "Space Seperated String"),
+                        (',', "Comma Seperated String", "Comma Seperated String")),
                 name="Message Type",
                 description="Message Type")  
 
@@ -57,6 +63,7 @@ class MessageParser (PropertyGroup):
     prefixes: CollectionProperty(type=PrefixItem)
 
 bpy.utils.register_class(MessageParser)
+Scene.OSC_Parsers = bpy.props.CollectionProperty(type=MessageParser)
 
 
 def draw_parser(layout,idx,parser):
@@ -106,7 +113,7 @@ def draw_prop(layout,prop_idx,prop):
     col = box.column()
     row = col.row()
     split = row.split(factor=0.8)
-    split.prop(prop,'data_path',text='Path')
+    split.prop_search(prop,'data_path', bpy.data, 'objects',text='Object')
     split.prop(prop,'id',text='')
 
     col.prop(prop, 'osc_type', text='Type')
@@ -138,7 +145,7 @@ class AddOSC_Parser(bpy.types.Operator):
     
     def execute(self, context):
         if 'OSC_Parsers' not in bpy.context.scene:
-            bpy.types.Scene.OSC_Parsers = CollectionProperty(type=MessageParser)
+            bpy.context.scene.OSC_Parsers.add()
 
         parser = bpy.context.scene.OSC_Parsers.add()
 

@@ -42,7 +42,7 @@ def OSC_callback(*args):
     # for simple properties
     if 'OSC_keys' in bpy.context.scene:
         for item in bpy.context.scene.OSC_keys:
-            ob = eval(item.data_path)
+            ob = item.data_path
             idx = 1 + item.idx
             
             if item.address == args[0]:
@@ -76,6 +76,17 @@ def OSC_callback(*args):
                         if bpy.context.window_manager.addosc_monitor == True: 
                             print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id)
     
+    # for parsed properties
+    if 'OSC_Parsers' in bpy.context.scene:
+        osc_address = args[0]
+        osc_message = args[1]
+        for parser in bpy.context.scene.OSC_Parsers:
+            if osc_address == parser.messageAddress:
+                stringlist = osc_message.split(parser.messageType)
+                print(osc_address)
+                print(str(stringlist[0]))
+
+
                                             
     if bpy.context.window_manager.addosc_monitor == True and fail == True: 
         print("Rejected OSC message, route: "+args[0]+" , content: "+content)
@@ -192,21 +203,23 @@ class OSC_Reading_Sending(bpy.types.Operator):
             #Reception is no more done in the timer modal operator, see the handler 
 
             #Sending
-            if 'OSC_keys' in bpy.context.scene:
-                for item in bpy.context.scene.OSC_keys:
-                    if item.id[0:2] == '["' and item.id[-2:] == '"]':
-                        prop = eval(item.data_path+item.id)
-                    else:
-                        prop = eval(item.data_path+'.'+item.id)
-                    
-                    if str(prop) != item.value: 
-                        item.value = str(prop)
+            sendOSC = False
+            if sendOSC:
+                if 'OSC_keys' in bpy.context.scene:
+                    for item in bpy.context.scene.OSC_keys:
+                        if item.id[0:2] == '["' and item.id[-2:] == '"]':
+                            prop = eval(item.data_path+item.id)
+                        else:
+                            prop = eval(item.data_path+'.'+item.id)
                         
-                        if item.idx == 0:
-                            msg = osc_message_builder.OscMessageBuilder(address=item.address)
-                            msg.add_arg(prop)
-                            msg = msg.build()
-                            self.client.send(msg)
+                        if str(prop) != item.value: 
+                            item.value = str(prop)
+                            
+                            if item.idx == 0:
+                                msg = osc_message_builder.OscMessageBuilder(address=item.address)
+                                msg.add_arg(prop)
+                                msg = msg.build()
+                                self.client.send(msg)
                             
         
         return {'PASS_THROUGH'}
@@ -276,6 +289,16 @@ class OSC_UI_Panel(bpy.types.Panel):
         layout.prop(bpy.context.window_manager, 'addosc_rate', text="Update rate(ms)")    
         layout.prop(bpy.context.window_manager, 'addosc_autorun', text="Start at Launch")
 
+        row = layout.row()
+        row.prop(bpy.context.scene, 'addosc_defaultaddr', text="Default Address")
+        row.prop(bpy.context.window_manager, 'addosc_monitor', text="Monitoring")
+       
+        if context.window_manager.addosc_monitor == True:
+            box = layout.box()
+            row5 = box.column(align=True)
+            row5.prop(bpy.context.window_manager, 'addosc_lastaddr', text="Last OSC address")
+            row5.prop(bpy.context.window_manager, 'addosc_lastpayload', text="Last OSC message") 
+
 class OSC_UI_Panel2(bpy.types.Panel):
     bl_label = "AddOSC Operations"
     bl_space_type = "VIEW_3D"
@@ -284,15 +307,7 @@ class OSC_UI_Panel2(bpy.types.Panel):
         
     def draw(self, context):
         layout = self.layout
-        row = layout.row(align=False)
-        row.prop(bpy.context.scene, 'addosc_defaultaddr', text="Default Address")
-        row.prop(bpy.context.window_manager, 'addosc_monitor', text="Monitoring")
-       
-        if context.window_manager.addosc_monitor == True:
-            box = layout.box()
-            row5 = box.column(align=True)
-            row5.prop(bpy.context.window_manager, 'addosc_lastaddr', text="Last OSC address")
-            row5.prop(bpy.context.window_manager, 'addosc_lastpayload', text="Last OSC message")   
+        row = layout.row(align=False)  
                 
         col = layout.column()
         col.operator("addosc.blankprop", text='Import Blank Prop')
@@ -301,25 +316,22 @@ class OSC_UI_Panel2(bpy.types.Panel):
         idx = 0
         if 'OSC_keys' in bpy.context.scene:
             for item in bpy.context.scene.OSC_keys:
-                box3 = layout.box()
+                box = layout.box()
 
-                row = box3.row()
+                row = box.row()
                 row.label(text = "Prop: " + str(idx + 1))
                 op = row.operator("addosc.delete",text='',icon='X')
                 op.idx = idx  
 
-                split = box3.split()
-                col = split.column()
-                col.prop(item,'data_path',text='Path')
+                col = box.column()
                 col.prop(item, 'address')
-                col2 = split.column()
-                row4 = col2.row(align=True)
-                row4.prop(item,'id',text='')
-                row4.prop(item, 'osc_type', text='Type')
+
+                col.prop_search(item,'data_path', bpy.data, 'objects',text='Object')
+                col.prop(item,'id',text='Path', icon='RNA')
+
+                col.prop(item, 'osc_type', text='Type')
             
-                row5 = col2.row(align=True)
-                row5.operator("addosc.pick", text='Pick').i_addr = item.address
-                row5.prop(item, 'idx', text='Index')
+                col.prop(item, 'idx', text='Index')
                 idx += 1
                 if bpy.context.window_manager.addosc_monitor == True:
                     col.prop(item, 'value')
@@ -386,16 +398,14 @@ class AddOSC_ImportBlank(bpy.types.Operator):
 
     def execute(self, context):
         if 'OSC_keys' not in bpy.context.scene:
-            bpy.types.Scene.OSC_keys = bpy.props.CollectionProperty(type=SceneSettingItem)
-            bpy.types.Scene.OSC_keys_tmp = bpy.props.CollectionProperty(type=SceneSettingItem)
+            bpy.context.scene.OSC_keys.add()
+            bpy.context.scene.OSC_keys_tmp.add()
 
         ks = bpy.context.scene.keying_sets.active
         
         item = bpy.context.scene.OSC_keys.add()
         item.id = "location[0]"
-        item.data_path = "bpy.data.objects['Cube']"
         item.address = "/blender/0"
-        item.osc_type = "float"
         item.idx = 0
                                                      
         return{'FINISHED'}        
