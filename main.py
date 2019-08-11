@@ -40,42 +40,43 @@ def OSC_callback(*args):
     bpy.context.window_manager.addosc_lastpayload = content
     
     # for simple properties
-    for item in bpy.context.scene.OSC_keys:
-        ob = eval(item.data_path)
-        idx = 1 + item.idx
-        
-        if item.address == args[0]:
-            #For ID custom properties (with brackets)
-            if item.id[0:2] == '["' and item.id[-2:] == '"]':
-                try:
-                    ob[item.id[2:-2]] = args[idx]
-                    fail = False
+    if 'OSC_keys' in bpy.context.scene:
+        for item in bpy.context.scene.OSC_keys:
+            ob = eval(item.data_path)
+            idx = 1 + item.idx
             
-                except:
-                    if bpy.context.window_manager.addosc_monitor == True:
-                        print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id)
-                        
-            #For normal properties
-            #with index in brackets -: i_num
-            elif item.id[-1] == ']':
-                d_p = item.id[:-3]
-                i_num = int(item.id[-2])
-                try:
-                    getattr(ob,d_p)[i_num] = args[idx]
-                    fail = False
-                except:
-                    if bpy.context.window_manager.addosc_monitor == True: 
-                        print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id) 
-            #without index in brackets
-            else:
-                try:
-                    setattr(ob,item.id,args[idx])
-                    fail = False
-                except:
-                    if bpy.context.window_manager.addosc_monitor == True: 
-                        print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id)
-                 
-                        
+            if item.address == args[0]:
+                #For ID custom properties (with brackets)
+                if item.id[0:2] == '["' and item.id[-2:] == '"]':
+                    try:
+                        ob[item.id[2:-2]] = args[idx]
+                        fail = False
+                
+                    except:
+                        if bpy.context.window_manager.addosc_monitor == True:
+                            print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id)
+                            
+                #For normal properties
+                #with index in brackets -: i_num
+                elif item.id[-1] == ']':
+                    d_p = item.id[:-3]
+                    i_num = int(item.id[-2])
+                    try:
+                        getattr(ob,d_p)[i_num] = args[idx]
+                        fail = False
+                    except:
+                        if bpy.context.window_manager.addosc_monitor == True: 
+                            print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id) 
+                #without index in brackets
+                else:
+                    try:
+                        setattr(ob,item.id,args[idx])
+                        fail = False
+                    except:
+                        if bpy.context.window_manager.addosc_monitor == True: 
+                            print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id)
+    
+                                            
     if bpy.context.window_manager.addosc_monitor == True and fail == True: 
         print("Rejected OSC message, route: "+args[0]+" , content: "+content)
 
@@ -191,23 +192,25 @@ class OSC_Reading_Sending(bpy.types.Operator):
             #Reception is no more done in the timer modal operator, see the handler 
 
             #Sending
-            for item in bpy.context.scene.OSC_keys:
-                if item.id[0:2] == '["' and item.id[-2:] == '"]':
-                    prop = eval(item.data_path+item.id)
-                else:
-                    prop = eval(item.data_path+'.'+item.id)
-                
-                if str(prop) != item.value: 
-                    item.value = str(prop)
+            if 'OSC_keys' in bpy.context.scene:
+                for item in bpy.context.scene.OSC_keys:
+                    if item.id[0:2] == '["' and item.id[-2:] == '"]':
+                        prop = eval(item.data_path+item.id)
+                    else:
+                        prop = eval(item.data_path+'.'+item.id)
                     
-                    if item.idx == 0:
-                        msg = osc_message_builder.OscMessageBuilder(address=item.address)
-                        msg.add_arg(prop)
-                        msg = msg.build()
-                        self.client.send(msg)
-   
-        return {'PASS_THROUGH'}      
-      
+                    if str(prop) != item.value: 
+                        item.value = str(prop)
+                        
+                        if item.idx == 0:
+                            msg = osc_message_builder.OscMessageBuilder(address=item.address)
+                            msg.add_arg(prop)
+                            msg = msg.build()
+                            self.client.send(msg)
+                            
+        
+        return {'PASS_THROUGH'}
+
     def execute(self, context):
         global _report 
         bcw = bpy.context.window_manager

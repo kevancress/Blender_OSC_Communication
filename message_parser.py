@@ -17,7 +17,6 @@ def update_num_props(self,context):
             prefix.props.remove(len(props)-1)
 
 
-
 class BaseProp:
     data_path: StringProperty(name="Data path", default="")
     id: StringProperty(name="ID", default="")
