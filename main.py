@@ -29,6 +29,38 @@ from .message_parser import SceneSettingItem
 ##############################
 
 _report= ["",""] #This for reporting OS network errors 
+def set_props(item,ob,value):
+    #For ID custom properties (with brackets)
+    if item.id[0:2] == '["' and item.id[-2:] == '"]':
+        try:
+            ob[item.id[2:-2]] = args[idx]
+            fail = False
+    
+        except:
+            if bpy.context.window_manager.addosc_monitor == True:
+                print ("Improper content received: for OSC key: "+item.id)
+                
+    #For normal properties
+    #with index in brackets -: i_num
+    elif item.id[-1] == ']':
+        d_p = item.id[:-3]
+        i_num = int(item.id[-2])
+        try:
+            getattr(ob,d_p)[i_num] = value
+            fail = False
+        except:
+            if bpy.context.window_manager.addosc_monitor == True: 
+                print ("Improper content received: for OSC key: "+item.id) 
+    #without index in brackets
+    else:
+        try:
+            setattr(ob,item.id,value)
+            fail = False
+        except:
+            if bpy.context.window_manager.addosc_monitor == True: 
+                print ("Improper content received: for OSC key: "+item.id)
+    
+    return fail
 
 # This Sets Object Values from OSC messages
 def OSC_callback(*args):
@@ -46,35 +78,8 @@ def OSC_callback(*args):
             idx = 1 + item.idx
             
             if item.address == args[0]:
-                #For ID custom properties (with brackets)
-                if item.id[0:2] == '["' and item.id[-2:] == '"]':
-                    try:
-                        ob[item.id[2:-2]] = args[idx]
-                        fail = False
+                fail = set_props(item,ob,args[idx])
                 
-                    except:
-                        if bpy.context.window_manager.addosc_monitor == True:
-                            print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id)
-                            
-                #For normal properties
-                #with index in brackets -: i_num
-                elif item.id[-1] == ']':
-                    d_p = item.id[:-3]
-                    i_num = int(item.id[-2])
-                    try:
-                        getattr(ob,d_p)[i_num] = args[idx]
-                        fail = False
-                    except:
-                        if bpy.context.window_manager.addosc_monitor == True: 
-                            print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id) 
-                #without index in brackets
-                else:
-                    try:
-                        setattr(ob,item.id,args[idx])
-                        fail = False
-                    except:
-                        if bpy.context.window_manager.addosc_monitor == True: 
-                            print ("Improper content received: "+content+"for OSC route: "+args[0]+" and key: "+item.id)
     
     # for parsed properties
     if 'OSC_Parsers' in bpy.context.scene:
@@ -82,9 +87,35 @@ def OSC_callback(*args):
         osc_message = args[1]
         for parser in bpy.context.scene.OSC_Parsers:
             if osc_address == parser.messageAddress:
+                # Parse the list
                 stringlist = osc_message.split(parser.messageType)
-                print(osc_address)
-                print(str(stringlist[0]))
+                if len(parser.prefixes) > 0:
+                    for prefix in parser.prefixes:
+                        prefixloc = None
+                        idx = 0
+
+                        # Check for Matching Prefix and return its location in the list
+                        for item in stringlist:
+                            if item == prefix.prefix:
+                                prefixloc = idx
+                            idx += 1
+
+                        # Assign Property Values
+                        if prefixloc != None:
+                            idx = 1
+                            if len(prefix.props) > 0:
+                                for prop in prefix.props:
+                                    ob = prop.data_path
+                                    # Parse Based on type
+                                    if prop.osc_type == 'int':
+                                        propValue = int(stringlist[prefixloc+idx])
+                                    elif prop.osc_type == 'float':
+                                        propValue = float(stringlist[prefixloc+idx])
+                                    else:
+                                        propValue = stringlist[prefixloc+idx]
+                                    fail = set_props(prop,ob,propValue)
+                                    idx += 1
+
 
 
                                             
@@ -329,12 +360,11 @@ class OSC_UI_Panel2(bpy.types.Panel):
                 col.prop_search(item,'data_path', bpy.data, 'objects',text='Object')
                 col.prop(item,'id',text='Path', icon='RNA')
 
-                col.prop(item, 'osc_type', text='Type')
-            
-                col.prop(item, 'idx', text='Index')
-                idx += 1
-                if bpy.context.window_manager.addosc_monitor == True:
-                    col.prop(item, 'value')
+                #col.prop(item, 'osc_type', text='Type')
+                #col.prop(item, 'idx', text='Index')
+                #col.prop(item, 'value')
+
+                    
                          
 class StartUDP(bpy.types.Operator):
     bl_idname = "addosc.startudp"
@@ -405,7 +435,7 @@ class AddOSC_ImportBlank(bpy.types.Operator):
         
         item = bpy.context.scene.OSC_keys.add()
         item.id = "location[0]"
-        item.address = "/blender/0"
+        item.address = ("/blender/" + str(len(bpy.context.scene.OSC_keys)-1))
         item.idx = 0
                                                      
         return{'FINISHED'}        

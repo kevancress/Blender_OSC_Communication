@@ -35,7 +35,7 @@ bl_info = {
     "blender": (2, 80, 6),
     "location": "",
     "description": "Realtime control of Blender using OSC protocol",
-    "warning": "Please read the disclaimer about network security on my site.",
+    "warning": "Please read the disclaimer about network security on JPfeP's site.",
     "wiki_url": "http://www.jpfep.net/pages/addosc/",
     "tracker_url": "",
     "category": "System"}

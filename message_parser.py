@@ -27,6 +27,7 @@ class BaseProp:
                 name="Message Type",
                 description="Message Type")  
     idx: IntProperty(name="Index", min=0, default=0)
+    value: bpy.props.StringProperty(name="Value", default="Unknown")
 
 # For Simple Adress -> Prop Mappings
 class SceneSettingItem(PropertyGroup,BaseProp):
@@ -111,10 +112,8 @@ def draw_prop(layout,prop_idx,prop):
     row = box.row()
 
     col = box.column()
-    row = col.row()
-    split = row.split(factor=0.8)
-    split.prop_search(prop,'data_path', bpy.data, 'objects',text='Object')
-    split.prop(prop,'id',text='')
+    col.prop_search(prop,'data_path', bpy.data, 'objects',text='Object')
+    col.prop(prop,'id',text='Path', icon='RNA')
 
     col.prop(prop, 'osc_type', text='Type')
 
