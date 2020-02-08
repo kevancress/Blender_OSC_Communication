@@ -29,16 +29,19 @@ from .message_parser import SceneSettingItem
 ##############################
 
 _report= ["",""] #This for reporting OS network errors 
+
+# Sets the defined blender properties
 def set_props(item,ob,value):
     #For ID custom properties (with brackets)
-    if item.id[0:2] == '["' and item.id[-2:] == '"]':
+    fail = True
+    if '["' in item.id:
         try:
-            ob[item.id[2:-2]] = args[idx]
+            setattr(ob,item.id,value)
             fail = False
     
         except:
             if bpy.context.window_manager.addosc_monitor == True:
-                print ("Improper content received: for OSC key: "+item.id)
+                print (" 1 Improper content received: for OSC key: "+item.id)
                 
     #For normal properties
     #with index in brackets -: i_num
@@ -50,15 +53,16 @@ def set_props(item,ob,value):
             fail = False
         except:
             if bpy.context.window_manager.addosc_monitor == True: 
-                print ("Improper content received: for OSC key: "+item.id) 
+                print (" 2 Improper content received: for OSC key: "+item.id) 
     #without index in brackets
     else:
         try:
             setattr(ob,item.id,value)
             fail = False
+
         except:
             if bpy.context.window_manager.addosc_monitor == True: 
-                print ("Improper content received: for OSC key: "+item.id)
+                print (" 3 Improper content received: for OSC key: "+ob + item.id)
     
     return fail
 
@@ -80,7 +84,6 @@ def OSC_callback(*args):
             if item.address == args[0]:
                 fail = set_props(item,ob,args[idx])
                 
-    
     # for parsed properties
     if 'OSC_Parsers' in bpy.context.scene:
         osc_address = args[0]
@@ -106,13 +109,15 @@ def OSC_callback(*args):
                             if len(prefix.props) > 0:
                                 for prop in prefix.props:
                                     ob = prop.data_path
-                                    # Parse Based on type
+
+                                    # Parse value Based on type
                                     if prop.osc_type == 'int':
                                         propValue = int(stringlist[prefixloc+idx])
                                     elif prop.osc_type == 'float':
                                         propValue = float(stringlist[prefixloc+idx])
                                     else:
                                         propValue = stringlist[prefixloc+idx]
+
                                     fail = set_props(prop,ob,propValue)
                                     idx += 1
 
@@ -120,7 +125,8 @@ def OSC_callback(*args):
 
                                             
     if bpy.context.window_manager.addosc_monitor == True and fail == True: 
-        print("Rejected OSC message, route: "+args[0]+" , content: "+content)
+        #print("Rejected OSC message, route: "+args[0]+" , content: "+content)
+        pass
 
 #For saving/restoring settings in the blendfile        
 def upd_settings_sub(n):

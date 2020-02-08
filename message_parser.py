@@ -1,7 +1,8 @@
 import bpy
 from bpy.props import IntProperty, EnumProperty, StringProperty, CollectionProperty, PointerProperty
-from bpy.types import PropertyGroup, Object, Scene
+from bpy.types import PropertyGroup, Object, Scene, Light
 
+# Match prefix props with user input
 def update_num_props(self,context):
     prefix = self
     props = prefix.props
@@ -16,16 +17,17 @@ def update_num_props(self,context):
         while numProps < len(props):
             prefix.props.remove(len(props)-1)
 
-
+# Base Props for OSC_keys and OSC_Parsers
 class BaseProp:
-    data_path: PointerProperty(type=Object)
+    data_path: PointerProperty(type=Light)
     id: StringProperty(name="Data Path", default="",description="RNA path (from ID Block) to property being driven")
     osc_type: EnumProperty(
                 items=(("string", "String", "String Property"),
                         ("float", "Float", "Float Property"),
                         ("int", "Integer", "Integer Property")),
                 name="Message Type",
-                description="Message Type")  
+                description="Message Type",
+                default= 'float')  
     idx: IntProperty(name="Index", min=0, default=0)
     value: bpy.props.StringProperty(name="Value", default="Unknown")
 
@@ -37,6 +39,7 @@ bpy.utils.register_class(SceneSettingItem)
 Scene.OSC_keys = bpy.props.CollectionProperty(type=SceneSettingItem)
 Scene.OSC_keys_tmp = bpy.props.CollectionProperty(type=SceneSettingItem)
 
+# For parser prefixes
 class PropItem(PropertyGroup,BaseProp):
     dummy_prop: StringProperty(name="I Just need somthing here, I'll do somthing neat with it later", default="")
 
