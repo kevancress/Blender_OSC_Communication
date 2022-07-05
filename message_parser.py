@@ -41,7 +41,7 @@ Scene.OSC_keys_tmp = bpy.props.CollectionProperty(type=SceneSettingItem)
 
 # For parser prefixes
 class PropItem(PropertyGroup,BaseProp):
-    dummy_prop: StringProperty(name="I Just need somthing here, I'll do somthing neat with it later", default="")
+    dummy_prop: StringProperty(name="I Just need something here, I'll do something neat with it later", default="")
 
 bpy.utils.register_class(PropItem) 
 
